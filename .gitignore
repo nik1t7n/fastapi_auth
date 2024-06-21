@@ -339,6 +339,8 @@ venv.bak/
 /.idea
 /__pycache__
 
+alembic.ini
+
 # Spyder project settings
 .spyderproject
 .spyproject
