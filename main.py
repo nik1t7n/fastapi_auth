@@ -1,5 +1,7 @@
+import os
 from datetime import timedelta
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
@@ -10,35 +12,11 @@ from database import get_db
 from schemas import UserCreate
 from utils import AuthService
 
+load_dotenv()
+
 app = FastAPI()
-
-def user_role_required():
-    def role_checker(token: str = Depends(oauth2_scheme), auth_service: AuthService = Depends(get_auth_service)):
-        payload = auth_service.verify_token(token=token)
-        user_role = payload.get("role")
-        if user_role != "user":
-            raise HTTPException(status_code=403, detail="Operation not permitted")
-    return role_checker
-
-def admin_role_required():
-    def role_checker(token: str = Depends(oauth2_scheme), auth_service: AuthService = Depends(get_auth_service)):
-        payload = auth_service.verify_token(token=token)
-        user_role = payload.get("role")
-        if user_role not in ["admin", "superadmin"]:
-            raise HTTPException(status_code=403, detail="Operation not permitted")
-    return role_checker
-
-def superadmin_role_required():
-    def role_checker(token: str = Depends(oauth2_scheme), auth_service: AuthService = Depends(get_auth_service)):
-        payload = auth_service.verify_token(token=token)
-        user_role = payload.get("role")
-        if user_role != "superadmin":
-            raise HTTPException(status_code=403, detail="Operation not permitted")
-    return role_checker
-
-
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+def get_auth_service(db: Session = Depends(get_db)):
+    return AuthService(db=db, pwd_context=pwd_context, SECRET_KEY=SECRET_KEY, ALGORITHM=ALGORITHM)
 
 origins = [
     "http://localhost:3000",
@@ -53,14 +31,11 @@ app.add_middleware(
 )
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-SECRET_KEY = "030e74361a305331d5a1541ac1897a6c74b1705859bd3075233781af19cc4ed5"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-
-def get_auth_service(db: Session = Depends(get_db)):
-    return AuthService(db=db, pwd_context=pwd_context, SECRET_KEY=SECRET_KEY, ALGORITHM=ALGORITHM)
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
 
 
 @app.post("/register")
